@@ -20,7 +20,7 @@ export default function LoginPage() {
 function LoginInner() {
   const params = useSearchParams();
   const rawNext = params.get('next') || '/welcome';
-  const next = rawNext.startsWith('/') ? rawNext : '/welcome';
+  const next = rawNext.startsWith('/') && !rawNext.startsWith('//') && !rawNext.startsWith('/\\') ? rawNext : '/welcome';
   const error = params.get('error');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(
