@@ -120,7 +120,7 @@ export async function encryptNote(
   // The frontend max note length is 280 chars, so JSON will never exceed ~400 bytes.
   // By forcing a uniform 512 bytes, there are no length "buckets" at all.
   const FIXED_SIZE = 512;
-  const needed = FIXED_SIZE - byteLen - 11; // 11 bytes for `,"_pad":""`
+  const needed = FIXED_SIZE - byteLen - 10; // 10 bytes for `,"_pad":""`
   
   if (needed > 0) {
     const obj = { ...payload, _pad: 'x'.repeat(needed) };
