@@ -585,3 +585,43 @@ $$;
 
 -- 5. Pin roll_from_jwt search_path
 ALTER FUNCTION roll_from_jwt() SET search_path = public;
+CREATE OR REPLACE FUNCTION register(
+  p_display_name text,
+  p_public_key   text,
+  p_wrapped_key  text
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_roll text := roll_from_jwt();
+  v_dir directory%rowtype;
+  v_sealed boolean;
+BEGIN
+  -- Strict QA Fix: Check the master seal toggle before allowing registration
+  SELECT is_sealed INTO v_sealed FROM system_config WHERE id = 1;
+  IF v_sealed THEN
+    RAISE EXCEPTION 'Signup phase has ended and directory is sealed.';
+  END IF;
+
+  -- The roll must exist in the roster (first-year BTech only).
+  SELECT * INTO v_dir FROM directory WHERE roll = v_roll FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'roll % is not on the roster', v_roll;
+  END IF;
+
+  INSERT INTO accounts (id, roll, wrapped_key)
+    VALUES (auth.uid(), v_roll, p_wrapped_key)
+  ON CONFLICT (id) DO UPDATE
+    SET wrapped_key = EXCLUDED.wrapped_key
+    WHERE accounts.submitted = false;
+
+  UPDATE directory
+    SET display_name = p_display_name,
+        public_key = p_public_key,
+        is_registered = true
+    WHERE roll = v_roll;
+END;
+$$;
