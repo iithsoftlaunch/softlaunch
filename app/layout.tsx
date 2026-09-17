@@ -7,6 +7,7 @@ import CursorGlow from '@/components/cursor-glow';
 import Interactive from '@/components/interactive';
 import RevealController from '@/components/reveal-controller';
 import ScrollProgress from '@/components/scroll-progress';
+import { Analytics } from '@vercel/analytics/next';
 
 const fraunces = Fraunces({
   subsets: ['latin'],
@@ -52,6 +53,7 @@ export default function RootLayout({
         <RevealController />
         <PurposeBar />
         {children}
+        <Analytics />
         <div className="grain" aria-hidden="true" />
       </body>
     </html>
