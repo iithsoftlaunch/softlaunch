@@ -11,15 +11,29 @@ import { buildReveal, type RawPick } from '../lib/reveal-core';
 const BUCKET = 'reveal';
 const FILE = 'results.json';
 
+async function fetchAllPicks(supabase: ReturnType<typeof admin>): Promise<RawPick[]> {
+  const all: RawPick[] = [];
+  const PAGE_SIZE = 1000;
+  let from = 0;
+  while (true) {
+    const { data, error } = await supabase
+      .from('picks')
+      .select('group_id, rank, token, note_ct, note_iv')
+      .range(from, from + PAGE_SIZE - 1);
+    if (error) throw new Error(error.message);
+    if (!data || data.length === 0) break;
+    all.push(...(data as RawPick[]));
+    if (data.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
+  }
+  return all;
+}
+
 async function main() {
   const supabase = admin();
 
-  const { data: rows, error } = await supabase
-    .from('picks')
-    .select('group_id, rank, token, note_ct, note_iv');
-  if (error) throw new Error(error.message);
-
-  const entries = buildReveal((rows ?? []) as RawPick[]);
+  const rows = await fetchAllPicks(supabase);
+  const entries = buildReveal(rows);
   console.log(`Built reveal file with ${entries.length} entries (matches + decoys).`);
 
   const { error: upErr } = await supabase.storage

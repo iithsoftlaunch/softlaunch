@@ -8,15 +8,29 @@
 import { admin } from './_lib';
 import { computeMatches, type PickRow } from '../lib/matching';
 
+async function fetchAllPicks(supabase: ReturnType<typeof admin>): Promise<PickRow[]> {
+  const all: PickRow[] = [];
+  const PAGE_SIZE = 1000;
+  let from = 0;
+  while (true) {
+    const { data, error } = await supabase
+      .from('picks')
+      .select('group_id, rank, token')
+      .range(from, from + PAGE_SIZE - 1);
+    if (error) throw new Error(error.message);
+    if (!data || data.length === 0) break;
+    all.push(...(data as PickRow[]));
+    if (data.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
+  }
+  return all;
+}
+
 async function main() {
   const supabase = admin();
 
-  const { data: rows, error } = await supabase
-    .from('picks')
-    .select('group_id, rank, token');
-  if (error) throw new Error(error.message);
-
-  const couples = computeMatches((rows ?? []) as PickRow[]).length;
+  const rows = await fetchAllPicks(supabase);
+  const couples = computeMatches(rows).length;
 
   const { count: signedUp } = await supabase
     .from('accounts')
