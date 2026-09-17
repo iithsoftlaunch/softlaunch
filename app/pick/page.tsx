@@ -57,7 +57,18 @@ export default function PickPage() {
       getMyGender().then(setGender).catch(() => {});
 
       const phase = currentPhase();
-      if (phase !== 'picking' || !s.sealed) {
+      if (s.pickingClosed) {
+        setBlocked(
+          <>
+            <p style={{ marginBottom: 16 }}>
+              Picking has officially closed.
+            </p>
+            <p className="gold">
+              The matching algorithm is now running. Results drop on Reveal Night.
+            </p>
+          </>
+        );
+      } else if (phase !== 'picking' || !s.sealed) {
         if (phase === 'before' || phase === 'signup' || phase === 'gap') {
           setBlocked(
             <>

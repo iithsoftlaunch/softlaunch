@@ -81,6 +81,7 @@ export interface Status {
   hasLocalKeys: boolean;
   hasLocalKit: boolean;
   sealed: boolean;
+  pickingClosed: boolean;
 }
 
 // Before-seal consent (account-level intent): "if I match, I'm open to being shown
@@ -114,6 +115,7 @@ export async function getStatus(): Promise<Status> {
       hasLocalKeys: false,
       hasLocalKit: false,
       sealed: false,
+      pickingClosed: false,
     };
   }
   const { data: acct } = await supabase
@@ -124,6 +126,8 @@ export async function getStatus(): Promise<Status> {
 
   const { count } = await supabase.from('directory_public').select('roll', { count: 'exact', head: true }).is('public_key', null);
   const isSealed = count === 0;
+  
+  const { data: cfg } = await supabase.from('system_config').select('picking_closed').eq('id', 1).maybeSingle();
 
   return {
     loggedIn: true,
@@ -133,6 +137,7 @@ export async function getStatus(): Promise<Status> {
     hasLocalKeys: !!loadKeyPairLocal(),
     hasLocalKit: !!loadKitLocal(),
     sealed: isSealed,
+    pickingClosed: !!cfg?.picking_closed,
   };
 }
 
