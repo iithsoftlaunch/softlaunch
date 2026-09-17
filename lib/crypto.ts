@@ -225,7 +225,8 @@ async function kitKey(priv: Uint8Array): Promise<CryptoKey> {
 export async function encryptKit(priv: Uint8Array, kit: KitEntry[]): Promise<string> {
   const key = await kitKey(priv);
   const iv = randomBytes(12);
-  const data = new TextEncoder().encode(JSON.stringify(kit));
+  const json = JSON.stringify(kit).padEnd(512, ' ');
+  const data = new TextEncoder().encode(json);
   const ct = new Uint8Array(
     await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, data),
   );

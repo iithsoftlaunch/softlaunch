@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Starfield from '@/components/starfield';
 import Aura from '@/components/aura';
 import { Brandmark } from '@/components/nav';
-import { getStatus, lookupRoll, submitPicks, setPreConsent, getMyGender, type PickInput } from '@/lib/flow';
+import { getStatus, lookupRoll, preloadDirectory, submitPicks, setPreConsent, getMyGender, type PickInput } from '@/lib/flow';
 import { rollFromEmail, currentPhase } from '@/lib/site';
 import CatMeme from '@/components/cat-meme';
 
@@ -100,6 +100,7 @@ export default function PickPage() {
           setBlocked('Results are live — head to the reveal page.');
         }
       }
+      preloadDirectory().catch(() => {});
       setLoading(false);
     })();
   }, [router]);

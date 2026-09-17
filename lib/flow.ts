@@ -179,18 +179,48 @@ export interface RollHit {
   publicKey: string; // base64url
 }
 
-// Typo-check lookup: type a roll, get the name. Returns null if not on roster.
+let directoryCache: Map<string, RollHit> | null = null;
+let preloadPromise: Promise<void> | null = null;
+
+export async function preloadDirectory(): Promise<void> {
+  if (directoryCache) return;
+  if (preloadPromise) return preloadPromise;
+
+  preloadPromise = (async () => {
+    try {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from('directory_public')
+        .select('roll, display_name, public_key');
+      if (data) {
+        const map = new Map<string, RollHit>();
+        for (const d of data) {
+          if (d.roll && d.public_key) {
+            map.set(d.roll.trim().toLowerCase().replace(/\s/g, ''), {
+              roll: d.roll,
+              displayName: d.display_name,
+              publicKey: d.public_key,
+            });
+          }
+        }
+        directoryCache = map;
+      }
+    } finally {
+      preloadPromise = null;
+    }
+  })();
+
+  return preloadPromise;
+}
+
+// Typo-check lookup: cached client-side directory lookup.
 export async function lookupRoll(roll: string): Promise<RollHit | null> {
-  const supabase = createClient();
   const clean = roll.trim().toLowerCase().replace(/\s/g, '');
   if (!clean) return null;
-  const { data } = await supabase
-    .from('directory_public')
-    .select('roll, display_name, public_key')
-    .eq('roll', clean)
-    .maybeSingle();
-  if (!data || !data.public_key) return null;
-  return { roll: data.roll, displayName: data.display_name, publicKey: data.public_key };
+  if (!directoryCache) {
+    await preloadDirectory();
+  }
+  return directoryCache?.get(clean) ?? null;
 }
 
 export interface PickInput {
