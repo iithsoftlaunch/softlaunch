@@ -854,7 +854,7 @@ $$;
 
 
 -- 1. Fix the NULL Email Bypass in Auth
-CREATE OR REPLACE FUNCTION auth.enforce_iith_email()
+CREATE OR REPLACE FUNCTION public.enforce_iith_email()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
