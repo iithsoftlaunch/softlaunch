@@ -625,3 +625,101 @@ BEGIN
     WHERE roll = v_roll;
 END;
 $$;
+
+-- ============================================================================
+-- RED TEAM SECURITY PATCHES (Sept 17)
+-- ============================================================================
+
+-- 1. Fix CRITICAL regression: Corrected recovery_kit_ct to kit_ct
+CREATE OR REPLACE FUNCTION submit_picks(p_picks jsonb, p_kit_ct text)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v_account accounts%rowtype;
+  v_group uuid := gen_random_uuid();
+  v_pick jsonb;
+  v_count int := jsonb_array_length(p_picks);
+BEGIN
+  if v_count > 3 then raise exception 'Maximum 3 picks allowed.'; end if;
+  
+  if (select count(distinct p->>'token') from jsonb_array_elements(p_picks) as p) < v_count then
+    raise exception 'Duplicate tokens not allowed.';
+  end if;
+  if (select count(distinct (p->>'rank')::int) from jsonb_array_elements(p_picks) as p) < v_count then
+    raise exception 'Duplicate ranks not allowed.';
+  end if;
+
+  select * into v_account from accounts where id = auth.uid() for update;
+  if not found then raise exception 'Account not found.'; end if;
+  if v_account.submitted then raise exception 'Picks already submitted.'; end if;
+
+  for v_pick in select * from jsonb_array_elements(p_picks) loop
+    if length(v_pick->>'token') > 100 or length(v_pick->>'note_ct') > 800 or length(v_pick->>'note_iv') > 30 then
+      raise exception 'Payload size exceeded limits.';
+    end if;
+
+    insert into picks (group_id, rank, token, note_ct, note_iv)
+    values (v_group, (v_pick->>'rank')::int, v_pick->>'token', v_pick->>'note_ct', v_pick->>'note_iv');
+  end loop;
+
+  update accounts 
+    set submitted = true,
+        kit_ct = p_kit_ct
+    where id = auth.uid();
+END;
+$$;
+
+-- 2. Fix CRITICAL regression: Remove display_name override to prevent impersonation
+CREATE OR REPLACE FUNCTION register(
+  p_display_name text,
+  p_public_key   text,
+  p_wrapped_key  text
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_roll text := roll_from_jwt();
+  v_dir directory%rowtype;
+  v_sealed boolean;
+BEGIN
+  SELECT is_sealed INTO v_sealed FROM system_config WHERE id = 1;
+  IF v_sealed THEN
+    RAISE EXCEPTION 'Signup phase has ended and directory is sealed.';
+  END IF;
+
+  SELECT * INTO v_dir FROM directory WHERE roll = v_roll FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'roll % is not on the roster', v_roll;
+  END IF;
+
+  INSERT INTO accounts (id, roll, wrapped_key)
+    VALUES (auth.uid(), v_roll, p_wrapped_key)
+  ON CONFLICT (id) DO UPDATE
+    SET wrapped_key = EXCLUDED.wrapped_key
+    WHERE accounts.submitted = false;
+
+  UPDATE directory
+    SET public_key = p_public_key,
+        is_registered = true
+    WHERE roll = v_roll;
+END;
+$$;
+
+-- 3. Fix Advanced Linkage: Defeat xmin correlation by rewriting accounts
+CREATE OR REPLACE FUNCTION reshuffle_picks()
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  if current_setting('request.jwt.claims', true)::jsonb->>'role' <> 'service_role' then
+    raise exception 'Unauthorized';
+  end if;
+  lock table picks in access exclusive mode;
+  create temporary table _picks_shuffled on commit drop as select * from picks order by random();
+  delete from picks;
+  insert into picks select * from _picks_shuffled;
+  
+  -- Defeat xmin correlation
+  update accounts set submitted = submitted;
+END;
+$$;
