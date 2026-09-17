@@ -723,3 +723,78 @@ BEGIN
   update accounts set submitted = submitted;
 END;
 $$;
+
+
+-- ============================================================================
+-- EDGE CASE PATCHES (Payload Bombs & Half-Seal Fail-safes)
+-- ============================================================================
+
+-- 1. Fix the Payload Bomb Vulnerability in register
+CREATE OR REPLACE FUNCTION register(
+  p_display_name text,
+  p_public_key   text,
+  p_wrapped_key  text
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_roll text := roll_from_jwt();
+  v_dir directory%rowtype;
+  v_sealed boolean;
+BEGIN
+  -- Strict QA Fix: Check the master seal toggle before allowing registration
+  SELECT is_sealed INTO v_sealed FROM system_config WHERE id = 1;
+  IF v_sealed THEN
+    RAISE EXCEPTION 'Signup phase has ended and directory is sealed.';
+  END IF;
+
+  -- PAYLOAD BOMB CHECK: Prevent DoS attacks crashing the Roster JSON
+  IF length(p_public_key) > 1000 OR length(p_wrapped_key) > 3000 THEN
+    RAISE EXCEPTION 'Payload size exceeded limits.';
+  END IF;
+
+  -- The roll must exist in the roster
+  SELECT * INTO v_dir FROM directory WHERE roll = v_roll FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'roll % is not on the roster', v_roll;
+  END IF;
+
+  INSERT INTO accounts (id, roll, wrapped_key)
+    VALUES (auth.uid(), v_roll, p_wrapped_key)
+  ON CONFLICT (id) DO UPDATE
+    SET wrapped_key = EXCLUDED.wrapped_key
+    WHERE accounts.submitted = false;
+
+  UPDATE directory
+    SET public_key = p_public_key,
+        is_registered = true
+    WHERE roll = v_roll;
+END;
+$$;
+
+-- 2. Fix the Half-Seal Crash Vulnerability via strict Database Trigger
+CREATE OR REPLACE FUNCTION check_seal_ready()
+RETURNS trigger 
+LANGUAGE plpgsql 
+AS $$
+DECLARE
+  missing_keys INT;
+BEGIN
+  -- Only run this check if the admin is trying to turn the seal ON
+  IF NEW.is_sealed = true AND OLD.is_sealed = false THEN
+    SELECT count(*) INTO missing_keys FROM directory WHERE public_key IS NULL;
+    IF missing_keys > 0 THEN
+      RAISE EXCEPTION 'CRITICAL STOP: Cannot seal roster. % students are missing decoy public keys. Run the seal.ts script first!', missing_keys;
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS enforce_seal_ready ON system_config;
+CREATE TRIGGER enforce_seal_ready
+  BEFORE UPDATE ON system_config
+  FOR EACH ROW EXECUTE FUNCTION check_seal_ready();
