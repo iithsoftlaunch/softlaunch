@@ -40,12 +40,9 @@ export default function WelcomePage() {
         setLoading(false);
         return;
       }
-      // New registrations only during the signup phase. Before it opens there's
-      // nothing to do yet; after it closes the directory is sealed, so no new
-      // keys may be created.
       const phase = currentPhase();
-      if (phase !== 'signup' && process.env.NEXT_PUBLIC_PICK_ANYTIME !== 'true') {
-        setSignupState(phase === 'before' ? 'notyet' : 'closed');
+      if (s.sealed || (phase !== 'signup' && process.env.NEXT_PUBLIC_PICK_ANYTIME !== 'true')) {
+        setSignupState(s.sealed || phase !== 'before' ? 'closed' : 'notyet');
         setLoading(false);
         return;
       }
