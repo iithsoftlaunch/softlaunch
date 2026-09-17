@@ -44,7 +44,7 @@ grant execute on function my_gender() to authenticated;
 -- role, so it can read the base table while clients cannot — that's what hides
 -- is_registered. Clients are granted SELECT on this view only.
 create or replace view directory_public as
-  select roll, display_name, public_key
+  select roll, display_name, CASE WHEN (select is_sealed from system_config where id = 1) THEN public_key ELSE null END as public_key
   from directory;
 
 -- ---------------------------------------------------------------------------
