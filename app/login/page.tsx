@@ -76,7 +76,7 @@ function LoginInner() {
           <div className="panel" style={{ marginBottom: 22 }}>
             <p className="muted" style={{ margin: 0, fontSize: 14 }}>
               Login only does two things: confirms you&rsquo;re a{' '}
-              <span className="gold">first-year BTech at IITH</span>, and makes sure
+              <span className="gold">first-year BTech/BDes at IITH</span>, and makes sure
               you&rsquo;re one person (no duplicates). That&rsquo;s it, nothing about
               you is tracked or stored beyond that.
             </p>

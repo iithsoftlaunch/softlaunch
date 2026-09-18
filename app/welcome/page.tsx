@@ -137,7 +137,7 @@ export default function WelcomePage() {
             <h1 style={{ fontSize: 28, marginBottom: 10 }}>First-years only this time</h1>
             <p className="muted" style={{ fontSize: 15.5 }}>
               Your IITH sign-in worked, but this edition of Soft Launch is open to
-              first-year BTech only. Nothing you did is wrong — you&rsquo;re just
+              first-year BTech/BDes only. Nothing you did is wrong — you&rsquo;re just
               not on this year&rsquo;s list.
             </p>
             <button

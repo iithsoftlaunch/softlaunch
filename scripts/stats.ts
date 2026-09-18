@@ -41,19 +41,9 @@ async function main() {
     .select('*', { count: 'exact', head: true })
     .eq('submitted', true);
 
-  console.log('');
-  console.log('  ─── Soft Launch ───');
-  console.log(`  👤  signed up:             ${signedUp ?? 0}`);
-  console.log(`  ✉️   submitted picks:       ${submitters ?? 0}`);
-  console.log(`  💞  couples formed:        ${couples}`);
-  console.log(`  🧑‍🤝‍🧑  people matched:         ${couples * 2}`);
-  if (submitters && submitters > 0) {
-    const pct = Math.round(((couples * 2) / submitters) * 100);
-    console.log(`  📈  of submitters matched:  ${pct}%`);
-  }
-  console.log('');
-  console.log('  (numbers only — no names, no rolls, no who-matched-whom)');
-  console.log('');
+  console.log(`Sign-ups: ${signedUp ?? 0}`);
+  console.log(`Picks submitted: ${submitters ?? 0}`);
+  console.log(`Matched picks: ${couples}`);
 }
 
 main().catch((e) => {

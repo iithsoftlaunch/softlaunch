@@ -21,7 +21,7 @@ export default function Home() {
         <div className="hero-inner">
           <div className="brandrow">
             <span className="seal-badge">
-              {SITE.campus} · first-year BTech · {SITE.edition}
+              {SITE.campus} · first-year BTech/BDes · {SITE.edition}
             </span>
           </div>
           <h1>

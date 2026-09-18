@@ -133,7 +133,7 @@ export default function HowItWorks() {
               <li>You submit once. No edits, no take-backs — pick carefully.</li>
               <li>You must log in and submit to take part. No lurking.</li>
               <li>Keep your recovery password. Without it, a lost phone means lost results.</li>
-              <li>This edition is first-year BTech only.</li>
+              <li>This edition is first-year BTech/BDes only.</li>
             </ul>
           </div>
 
