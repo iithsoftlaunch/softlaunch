@@ -96,6 +96,12 @@ export default function RevealPage() {
         setView('notyet');
         return;
       }
+      if (!s.submitted) {
+        setResult({ matched: false });
+        setCaption("You didn't lock in any picks during the 24-hour picking window, so you weren't entered into matching. Go check out who made it on the wall!");
+        setView('result');
+        return;
+      }
       await tryReveal();
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
